@@ -5,12 +5,15 @@ pragma solidity ^0.8.19;
  * @title ProofOfInferenceAVS
  * @dev A mock Actively Validated Service (AVS) for demonstrating Proof of Inference
  * on EigenLayer. This contract validates AI inference results through operator consensus.
- * 
+ *
  * NOTE: This is a simplified mock implementation for demonstration purposes.
  * A production AVS would require integration with EigenLayer's core contracts,
  * proper slashing mechanisms, and more sophisticated validation logic.
  */
 contract ProofOfInferenceAVS {
+    // Task status enum
+    enum TaskStatus { Pending, Completed }
+
     // Events
     event InferenceSubmitted(
         bytes32 indexed taskId,
@@ -41,7 +44,7 @@ contract ProofOfInferenceAVS {
         bytes32 inputHash;
         uint256 submissionTime;
         uint256 deadline;
-        bool finalized;
+        TaskStatus status;
         bytes32 consensusResult;
         uint256 consensusCount;
     }
@@ -85,8 +88,8 @@ contract ProofOfInferenceAVS {
         _;
     }
     
-    modifier taskNotFinalized(bytes32 taskId) {
-        require(!tasks[taskId].finalized, "Task already finalized");
+    modifier taskNotCompleted(bytes32 taskId) {
+        require(tasks[taskId].status == TaskStatus.Pending, "Task already completed");
         _;
     }
     
@@ -132,22 +135,20 @@ contract ProofOfInferenceAVS {
             block.timestamp,
             taskCounter++
         ));
-        
+
         tasks[taskId] = InferenceTask({
             submitter: msg.sender,
             model: model,
             inputHash: inputHash,
             submissionTime: block.timestamp,
-            deadline: block.timestamp + TASK_DEADLINE,
-            finalized: false,
+            deadline: block.timestamp + 1 days,
+            status: TaskStatus.Pending,
             consensusResult: bytes32(0),
             consensusCount: 0
         });
-        
+
         taskList.push(taskId);
         emit InferenceSubmitted(taskId, msg.sender, model, inputHash);
-        
-        return taskId;
     }
 
     /**
@@ -158,26 +159,27 @@ contract ProofOfInferenceAVS {
     function submitResult(
         bytes32 taskId,
         bytes32 resultHash
-    ) external 
-        onlyActiveOperator 
-        taskExists(taskId) 
-        taskNotFinalized(taskId) 
-        withinDeadline(taskId) 
+    )
+        external
+        onlyActiveOperator
+        taskExists(taskId)
+        taskNotCompleted(taskId)
+        withinDeadline(taskId)
     {
         require(resultHash != bytes32(0), "Invalid result hash");
         require(!operatorResults[taskId][msg.sender].submitted, "Result already submitted");
-        
+
         operatorResults[taskId][msg.sender] = OperatorResult({
             resultHash: resultHash,
             timestamp: block.timestamp,
             submitted: true
         });
-        
+
         resultCounts[taskId][resultHash]++;
         operators[msg.sender].totalTasks++;
-        
+
         emit ResultSubmitted(taskId, msg.sender, resultHash);
-        
+
         // Check if consensus is reached
         _checkConsensus(taskId);
     }
@@ -196,7 +198,7 @@ contract ProofOfInferenceAVS {
         // Find the result with the highest count
         bytes32 topResult;
         uint256 topCount = 0;
-        
+
         // In a real implementation, we'd track all submitted results more efficiently
         // For this mock, we'll use a simplified approach
         for (uint256 i = 0; i < operatorList.length; i++) {
@@ -227,13 +229,13 @@ contract ProofOfInferenceAVS {
         bytes32 consensusResult,
         uint256 consensusCount
     ) internal {
-        tasks[taskId].finalized = true;
+        tasks[taskId].status = TaskStatus.Completed;
         tasks[taskId].consensusResult = consensusResult;
         tasks[taskId].consensusCount = consensusCount;
-        
+
         // Reward operators who submitted the correct result
         _rewardCorrectOperators(taskId, consensusResult);
-        
+
         emit TaskFinalized(taskId, consensusResult, consensusCount);
     }
 
@@ -256,7 +258,7 @@ contract ProofOfInferenceAVS {
      * @dev Force finalize a task after deadline (emergency function)
      * @param taskId The task identifier
      */
-    function forceFinalize(bytes32 taskId) external taskExists(taskId) taskNotFinalized(taskId) {
+    function forceFinalize(bytes32 taskId) external taskExists(taskId) taskNotCompleted(taskId) {
         require(block.timestamp > tasks[taskId].deadline, "Deadline not passed");
         
         // Find the most common result even if it doesn't meet consensus
@@ -278,8 +280,8 @@ contract ProofOfInferenceAVS {
         if (topCount > 0) {
             _finalizeTask(taskId, topResult, topCount);
         } else {
-            // No results submitted, mark as failed
-            tasks[taskId].finalized = true;
+            // No results submitted, mark as completed (failed)
+            tasks[taskId].status = TaskStatus.Completed;
             emit TaskFinalized(taskId, bytes32(0), 0);
         }
     }
@@ -296,7 +298,7 @@ contract ProofOfInferenceAVS {
         bytes32 inputHash,
         uint256 submissionTime,
         uint256 deadline,
-        bool finalized,
+        TaskStatus status,
         bytes32 consensusResult,
         uint256 consensusCount
     ) {
@@ -307,7 +309,7 @@ contract ProofOfInferenceAVS {
             task.inputHash,
             task.submissionTime,
             task.deadline,
-            task.finalized,
+            task.status,
             task.consensusResult,
             task.consensusCount
         );
@@ -352,7 +354,8 @@ contract ProofOfInferenceAVS {
         uint256 submittedResults,
         uint256 requiredConsensus
     ) {
-        if (tasks[taskId].finalized || block.timestamp > tasks[taskId].deadline) {
+        InferenceTask memory task = tasks[taskId];
+        if (task.status == TaskStatus.Completed || block.timestamp > task.deadline) {
             return (false, 0, 0);
         }
         
