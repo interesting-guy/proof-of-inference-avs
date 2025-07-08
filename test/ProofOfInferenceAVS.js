@@ -4,14 +4,16 @@ const { ethers } = require("hardhat");
 describe("ProofOfInferenceAVS", function () {
   let avs;
   let owner, submitter, operator1, operator2;
+
   const model = "test-model";
-  const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
+  const inputHash = ethers.keccak256(ethers.toUtf8Bytes("some prompt"));
 
   beforeEach(async function () {
     [owner, submitter, operator1, operator2] = await ethers.getSigners();
+
     const AVS = await ethers.getContractFactory("ProofOfInferenceAVS");
     avs = await AVS.deploy();
-    await avs.deployed();
+    await avs.waitForDeployment();
   });
 
   it("should register an operator", async function () {
@@ -23,10 +25,8 @@ describe("ProofOfInferenceAVS", function () {
   it("should submit and verify a proof", async function () {
     await avs.connect(owner).registerOperator(operator1.address);
 
-    const resultHash = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("result hash")
-    );
-    const signature = ethers.utils.hexlify(ethers.utils.randomBytes(65));
+    const resultHash = ethers.keccak256(ethers.toUtf8Bytes("result hash"));
+    const signature = ethers.hexlify(ethers.randomBytes(65));
 
     await avs.connect(operator1).submitProof(model, inputHash, resultHash, signature);
     const storedProof = await avs.proofs(model, inputHash);
