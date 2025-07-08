@@ -1,33 +1,137 @@
-# proof-of-inference-avs
-# Proof of Inference AVS
 
-> A mock Actively Validated Service (AVS) for demonstrating decentralized AI inference validation on EigenLayer
 
-## What it Does
+# 🧠 Proof of Inference AVS
 
-This project implements a Proof of Inference Actively Validated Service (AVS) that enables decentralized validation of AI inference results through operator consensus. It demonstrates how AI inference tasks can be submitted, validated by multiple operators, and reach consensus in a trustless environment.
+> *"Can we verify that AI outputs are honest — using crypto?"*
 
-## How it Works
+**Proof of Inference AVS** is a mock Actively Validated Service (AVS) designed for the EigenLayer ecosystem. It verifies AI inference results by reaching consensus across multiple operators. If the majority agrees, their results are accepted and rewarded. If not, outliers are flagged and slashed (mocked).
 
-- **Task Submission**: Users submit AI inference tasks with model identifiers and input data hashes
-- **Operator Validation**: Registered operators independently process inference tasks and submit result hashes
-- **Consensus Mechanism**: The system reaches consensus when a sufficient percentage of operators agree on results
-- **Automated Finalization**: Tasks are automatically finalized when consensus thresholds are met or deadlines are reached
+It’s a simulation of how AVSes could handle decentralized AI verification in production.
 
-## Smart Contract Walkthrough
+---
 
-### Main Functions
+## 🧩 What This Does
 
-#### `submitInferenceTask(string model, bytes32 inputHash)`
-- Submits a new inference task for validation
-- Creates a unique task ID and sets a deadline for responses
-- Emits `InferenceSubmitted` event for operators to pick up
+- ✅ Accepts an AI inference request (`model`, `inputHash`)
+- ✅ Tracks submissions from staked operators (`resultHash`)
+- ✅ Computes onchain consensus (≥51% of operators agree)
+- ✅ Rewards consensus-aligned operators
+- ❌ Flags or slashes outliers (mock logic)
+- ⏱ Force-finalizes tasks after deadline if needed
 
-#### `submitResult(bytes32 taskId, bytes32 resultHash)`
-- Allows registered operators to submit their inference results
-- Validates operator eligibility and task status
-- Automatically triggers consensus checking when results are submitted
-- Emits `ResultSubmitted` event
+---
 
-#### `checkConsistency(bytes32 taskId)`
-- Views function to check if a task needs consensus validation
+## 🌍 Why This Matters
+
+AI models are black boxes — and decentralized infra still blindly trusts them.  
+This AVS shows how **Ethereum + EigenLayer + cryptographic coordination** could:
+
+- Verify offchain AI behavior
+- Penalize dishonest nodes
+- Coordinate trustless inference marketplaces
+
+---
+
+## 🧠 Architecture Overview
+
+
+
+\[User] submits task: model + inputHash
+↓
+\[Operators] submit resultHash (AI output hash)
+↓
+Smart contract tallies results:
+→ If ≥51% match → finalize + reward
+→ If not enough match → wait or fallback
+↓
+Finalization emits result + updates operator stats
+
+
+
+---
+
+## 🛠 How to Run Locally
+
+bash
+# Clone the repo
+git clone https://github.com/interesting-guy/proof-of-inference-avs.git
+cd proof-of-inference-avs
+
+# Install dependencies
+npm install
+
+# Run tests
+npx hardhat test
+
+
+---
+
+## 📂 File Structure
+
+contracts/
+└── ProofOfInferenceAVS.sol   # Core contract logic
+
+test/
+└── ProofOfInferenceAVS.js    # Simulates 3 scenarios:
+                              # - 5 match
+                              # - 3 vs 2 mismatch
+                              # - late submission failure
+
+.github/workflows/
+└── ci.yml                    # GitHub Actions test runner
+
+
+---
+
+## ✅ Features Implemented
+
+* Stake-based operator registration
+* Deadline-based task flow
+* 51% consensus logic (onchain)
+* Success tracking for operator performance
+* Force-finalize fallback with best-effort result
+* GitHub Actions CI with full test coverage
+
+---
+
+## 🚧 Future Work
+
+| Feature               | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| Real slashing         | Integrate with EigenLayer’s slashing API (via EigenPods) |
+| zkML proof system     | Verify actual model outputs via zkSNARKs                 |
+| Operator reputation   | Score nodes based on task consistency                    |
+| Inference marketplace | Token-incentivized task queue + reputation auctions      |
+| L2 deployment         | Cheap inference checks on OP Stack / Arbitrum Orbit      |
+
+---
+
+## 💬 Credits
+
+* Inspired by the EigenLayer AVS framework
+* Research supported via the EigenCloud Bootcamp
+* Ideas aligned with zkML, AI agents, and cryptoeconomic coordination
+
+---
+
+## 🧪 Try It in 60 Seconds
+
+bash
+git clone [your repo]
+cd proof-of-inference-avs
+npm install
+npx hardhat test
+
+
+You’ll see AI tasks submitted, operator responses verified, and rewards distributed — all in local EVM logic.
+
+---
+
+## 📜 License
+
+MIT
+
+---
+
+
+
