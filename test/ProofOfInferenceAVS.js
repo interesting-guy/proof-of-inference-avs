@@ -12,7 +12,7 @@ describe("ProofOfInferenceAVS", function () {
     const AVS = await ethers.getContractFactory("ProofOfInferenceAVS");
     avs = await AVS.deploy();
     await avs.deployed();
-    ONE_ETH = ethers.utils.parseEther("1");
+    ONE_ETH = ethers.utils.parseEther("1"); // ✅ initialize after ethers is ready
   });
 
   async function registerOperators(count = 5) {
@@ -45,7 +45,7 @@ describe("ProofOfInferenceAVS", function () {
     expect(task.consensusCount).to.equal(5);
   });
 
-  it("3 mismatched results out of 5 → consensus on majority, outliers not rewarded", async function () {
+  it("3 mismatched results out of 5 → emit TaskFinalized with consensus on majority, outliers not rewarded", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
     const hashA = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("A"));
@@ -57,7 +57,7 @@ describe("ProofOfInferenceAVS", function () {
     await avs.connect(operators[3]).submitResult(taskId, hashB);
 
     let task = await avs.tasks(taskId);
-    expect(task.status).to.equal(0);
+    expect(task.status).to.equal(0); // not finalized yet
 
     await expect(
       avs.connect(operators[4]).submitResult(taskId, hashB)
@@ -78,12 +78,12 @@ describe("ProofOfInferenceAVS", function () {
     }
   });
 
-  it("Late result submission → revert with deadline error", async function () {
+  it("Operator tries to submit result after deadline → revert with correct error", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
     const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("late-result"));
 
-    await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
+    await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]); // +2 days
     await ethers.provider.send("evm_mine", []);
 
     await expect(
