@@ -1,13 +1,11 @@
 const { ethers } = require("hardhat");
-const { parseEther } = ethers.utils;
 const { expect } = require("chai");
-
 
 describe("ProofOfInferenceAVS", function () {
   let avs, owner, submitter, operators;
-  const ONE_ETH = ethers.utils.parseEther("1");
+  const ONE_ETH = ethers.parseEther("1");
   const model = "test-model";
-  const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
+  const inputHash = ethers.keccak256(ethers.toUtf8Bytes("some prompt"));
 
   beforeEach(async () => {
     [owner, submitter, ...operators] = await ethers.getSigners();
@@ -25,7 +23,6 @@ describe("ProofOfInferenceAVS", function () {
   async function submitTask() {
     const tx = await avs.connect(submitter).submitInferenceTask(model, inputHash);
     const rc = await tx.wait();
-    // taskId is the first argument in the InferenceSubmitted event
     const event = rc.events.find(e => e.event === "InferenceSubmitted");
     return event.args.taskId;
   }
@@ -33,7 +30,7 @@ describe("ProofOfInferenceAVS", function () {
   it("Full valid task lifecycle: task submission → 5 consistent results → no slashing", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("result"));
+    const resultHash = ethers.keccak256(ethers.toUtf8Bytes("result"));
 
     for (let i = 0; i < 5; i++) {
       await expect(
@@ -41,9 +38,8 @@ describe("ProofOfInferenceAVS", function () {
       ).to.emit(avs, "ResultSubmitted");
     }
 
-    // The task should be completed and finalized
     const task = await avs.tasks(taskId);
-    expect(task.status).to.equal(1); // TaskStatus.Completed
+    expect(task.status).to.equal(1);
     expect(task.consensusResult).to.equal(resultHash);
     expect(task.consensusCount).to.equal(5);
   });
@@ -51,15 +47,14 @@ describe("ProofOfInferenceAVS", function () {
   it("3 mismatched results out of 5 → emit TaskFinalized with consensus on majority, outliers are not rewarded", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const hashA = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("A")); // majority
-    const hashB = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("B")); // minority
+    const hashA = ethers.keccak256(ethers.toUtf8Bytes("A"));
+    const hashB = ethers.keccak256(ethers.toUtf8Bytes("B"));
 
-    // 3 operators submit hashA, 2 submit hashB
     await avs.connect(operators[0]).submitResult(taskId, hashA);
     await avs.connect(operators[1]).submitResult(taskId, hashA);
     await avs.connect(operators[2]).submitResult(taskId, hashA);
     await avs.connect(operators[3]).submitResult(taskId, hashB);
-    // Should not finalize yet (only 3/5 so not enough for 51%)
+
     let task = await avs.tasks(taskId);
     expect(task.status).to.equal(0);
 
@@ -68,13 +63,11 @@ describe("ProofOfInferenceAVS", function () {
     ).to.emit(avs, "TaskFinalized")
      .withArgs(taskId, hashA, 3);
 
-    // The task should be finalized
     task = await avs.tasks(taskId);
     expect(task.status).to.equal(1);
     expect(task.consensusResult).to.equal(hashA);
     expect(task.consensusCount).to.equal(3);
 
-    // Optional: Check that only correct operators were rewarded
     for (let i = 0; i < 3; i++) {
       const op = await avs.operators(operators[i].address);
       expect(op.successfulTasks).to.equal(1);
@@ -88,9 +81,8 @@ describe("ProofOfInferenceAVS", function () {
   it("Operator tries to submit result after deadline → revert with correct error", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("late-result"));
+    const resultHash = ethers.keccak256(ethers.toUtf8Bytes("late-result"));
 
-    // Move time forward by 2 days (beyond 1 day deadline)
     await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
     await ethers.provider.send("evm_mine", []);
 
@@ -99,4 +91,3 @@ describe("ProofOfInferenceAVS", function () {
     ).to.be.revertedWith("Task deadline passed");
   });
 });
-
