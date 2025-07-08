@@ -1,6 +1,7 @@
-const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { parseEther } = ethers.utils;
+const { expect } = require("chai");
+
 
 describe("ProofOfInferenceAVS", function () {
   let avs, owner, submitter, operators;
