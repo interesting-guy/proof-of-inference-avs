@@ -1,15 +1,16 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { parseEther, keccak256, toUtf8Bytes } = ethers.utils;
 
 describe("ProofOfInferenceAVS", function () {
   let ONE_ETH;
 
   before(function () {
-    ONE_ETH = ethers.utils.parseEther("1");
+    ONE_ETH = parseEther("1");
   });
 
   const model = "test-model";
-  const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
+  const inputHash = keccak256(toUtf8Bytes("some prompt"));
 
   beforeEach(async () => {
     [owner, submitter, ...operators] = await ethers.getSigners();
@@ -20,7 +21,7 @@ describe("ProofOfInferenceAVS", function () {
 
   async function registerOperators(count = 5) {
     for (let i = 0; i < count; i++) {
-      await avs.connect(operators[i]).registerOperator({ value: ethers.utils.parseEther("1") });
+      await avs.connect(operators[i]).registerOperator({ value: parseEther("1") });
     }
   }
 
@@ -34,7 +35,7 @@ describe("ProofOfInferenceAVS", function () {
   it("Full valid task lifecycle: task submission → 5 consistent results → no slashing", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("result"));
+    const resultHash = keccak256(toUtf8Bytes("result"));
 
     for (let i = 0; i < 5; i++) {
       await expect(
@@ -51,8 +52,8 @@ describe("ProofOfInferenceAVS", function () {
   it("3 mismatched results out of 5 → emit TaskFinalized with consensus on majority, outliers not rewarded", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const hashA = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("A"));
-    const hashB = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("B"));
+    const hashA = keccak256(toUtf8Bytes("A"));
+    const hashB = keccak256(toUtf8Bytes("B"));
 
     await avs.connect(operators[0]).submitResult(taskId, hashA);
     await avs.connect(operators[1]).submitResult(taskId, hashA);
@@ -84,7 +85,7 @@ describe("ProofOfInferenceAVS", function () {
   it("Operator tries to submit result after deadline → revert with correct error", async function () {
     await registerOperators(5);
     const taskId = await submitTask();
-    const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("late-result"));
+    const resultHash = keccak256(toUtf8Bytes("late-result"));
 
     await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
     await ethers.provider.send("evm_mine", []);
