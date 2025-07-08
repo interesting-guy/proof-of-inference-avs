@@ -1,8 +1,12 @@
-const { ethers } = require("hardhat");
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 
 describe("ProofOfInferenceAVS", function () {
-  let avs, owner, submitter, operators;
+  let ONE_ETH;
+
+  before(function () {
+    ONE_ETH = ethers.utils.parseEther("1");
+  });
 
   const model = "test-model";
   const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
