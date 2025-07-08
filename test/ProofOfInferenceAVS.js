@@ -1,38 +1,44 @@
 const { expect } = require("chai");
-const hre = require("hardhat");
-const { keccak256, toUtf8Bytes, hexlify, randomBytes } = require("ethers");
+const { ethers } = require("hardhat");
+const { parseEther, keccak256, toUtf8Bytes } = require("ethers/lib/utils");
 
 describe("ProofOfInferenceAVS", function () {
   let avs;
-  let owner, submitter, operator1, operator2;
-
+  let owner, submitter, operators;
   const model = "test-model";
   const inputHash = keccak256(toUtf8Bytes("some prompt"));
 
-  beforeEach(async function () {
-    [owner, submitter, operator1, operator2] = await hre.ethers.getSigners();
-
-    const AVS = await hre.ethers.getContractFactory("ProofOfInferenceAVS");
+  beforeEach(async () => {
+    [owner, submitter, ...operators] = await ethers.getSigners();
+    const AVS = await ethers.getContractFactory("ProofOfInferenceAVS");
     avs = await AVS.deploy();
-    await avs.waitForDeployment();
+    await avs.deployed();
   });
 
-  it("should register an operator", async function () {
-    await avs.connect(owner).registerOperator(operator1.address);
-    const isRegistered = await avs.operators(operator1.address);
-    expect(isRegistered).to.be.true;
-  });
+  async function registerOperators(count = 5) {
+    for (let i = 0; i < count; i++) {
+      await avs.connect(operators[i]).registerOperator({ value: parseEther("1") });
+    }
+  }
 
-  it("should submit and verify a proof", async function () {
-    await avs.connect(owner).registerOperator(operator1.address);
+  async function submitTask() {
+    const tx = await avs.connect(submitter).submitInferenceTask(model, inputHash);
+    const rc = await tx.wait();
+    const event = rc.events.find(e => e.event === "InferenceSubmitted");
+    return event.args.taskId;
+  }
 
-    const resultHash = keccak256(toUtf8Bytes("result hash"));
-    const signature = hexlify(randomBytes(65));
+  it("✅ Full lifecycle: task submission → 5 same results → finalization with no slashing", async () => {
+    await registerOperators(5);
+    const taskId = await submitTask();
+    const resultHash = keccak256(toUtf8Bytes("result"));
 
-    await avs.connect(operator1).submitProof(model, inputHash, resultHash, signature);
-    const storedProof = await avs.proofs(model, inputHash);
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        avs.connect(operators[i]).submitResult(taskId, resultHash)
+      ).to.emit(avs, "ResultSubmitted");
+    }
 
-    expect(storedProof.resultHash).to.equal(resultHash);
-    expect(storedProof.submitter).to.equal(operator1.address);
-  });
-});
+    const task = await avs.tasks(taskId);
+    expect(task.status).to.equal(1); // Completed
+    expec
