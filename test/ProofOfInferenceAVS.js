@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseEther, keccak256, toUtf8Bytes } = require("ethers/lib/utils");
+const { parseEther, keccak256, toUtf8Bytes } = ethers.utils;
+
 
 describe("ProofOfInferenceAVS", function () {
   let avs;
