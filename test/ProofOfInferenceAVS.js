@@ -3,7 +3,7 @@ const { expect } = require("chai");
 
 describe("ProofOfInferenceAVS", function () {
   let avs, owner, submitter, operators;
-  let ONE_ETH;
+
   const model = "test-model";
   const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
 
@@ -12,12 +12,11 @@ describe("ProofOfInferenceAVS", function () {
     const AVS = await ethers.getContractFactory("ProofOfInferenceAVS");
     avs = await AVS.deploy();
     await avs.deployed();
-    ONE_ETH = ethers.utils.parseEther("1"); // ✅ initialize after ethers is ready
   });
 
   async function registerOperators(count = 5) {
     for (let i = 0; i < count; i++) {
-      await avs.connect(operators[i]).registerOperator({ value: ONE_ETH });
+      await avs.connect(operators[i]).registerOperator({ value: ethers.utils.parseEther("1") });
     }
   }
 
@@ -57,7 +56,7 @@ describe("ProofOfInferenceAVS", function () {
     await avs.connect(operators[3]).submitResult(taskId, hashB);
 
     let task = await avs.tasks(taskId);
-    expect(task.status).to.equal(0); // not finalized yet
+    expect(task.status).to.equal(0); // Not finalized yet
 
     await expect(
       avs.connect(operators[4]).submitResult(taskId, hashB)
@@ -83,7 +82,7 @@ describe("ProofOfInferenceAVS", function () {
     const taskId = await submitTask();
     const resultHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("late-result"));
 
-    await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]); // +2 days
+    await ethers.provider.send("evm_increaseTime", [2 * 24 * 60 * 60]);
     await ethers.provider.send("evm_mine", []);
 
     await expect(
