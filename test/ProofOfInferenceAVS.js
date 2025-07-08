@@ -1,12 +1,11 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { parseEther, keccak256, toUtf8Bytes } = ethers.utils;
 
 describe("ProofOfInferenceAVS", function () {
   let avs, owner, submitter, operators;
-  const ONE_ETH = parseEther("1");
+  const ONE_ETH = ethers.utils.parseEther("1");
   const model = "test-model";
-  const inputHash = keccak256(toUtf8Bytes("some prompt"));
+  const inputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("some prompt"));
 
   beforeEach(async () => {
     [owner, submitter, ...operators] = await ethers.getSigners();
@@ -17,7 +16,7 @@ describe("ProofOfInferenceAVS", function () {
   });
 
   it("should allow a submitter to submit a result", async () => {
-    const outputHash = keccak256(toUtf8Bytes("output"));
+    const outputHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("output"));
     await expect(avs.connect(submitter).submitResult(model, inputHash, outputHash))
       .to.emit(avs, "ResultSubmitted")
       .withArgs(model, inputHash, outputHash, submitter.address);
