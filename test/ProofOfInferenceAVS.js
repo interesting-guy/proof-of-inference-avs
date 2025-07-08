@@ -1,5 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+console.log("ethers.utils:", ethers.utils);
+console.log("parseEther:", parseEther);
 const { parseEther, keccak256, toUtf8Bytes } = ethers.utils;
 
 
