@@ -15,8 +15,7 @@ It’s a simulation of how AVSes could handle decentralized AI verification in p
 - ✅ Accepts an AI inference request (`model`, `inputHash`)
 - ✅ Tracks submissions from staked operators (`resultHash`)
 - ✅ Computes onchain consensus (≥51% of operators agree)
-- ✅ Rewards consensus-aligned operators
-- ❌ Flags or slashes outliers (mock logic)
+🧠 Proof of Inference AVS- ❌ Flags or slashes outliers (mock logic)
 - ⏱ Force-finalizes tasks after deadline if needed
 
 ---
